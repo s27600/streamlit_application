@@ -90,14 +90,21 @@ elif option == "Tłumaczenie angielski → niemiecki":
         try:
             with st.spinner('🔄 Tłumaczę tekst...'):
                 # Używamy modelu Helsinki-NLP dla tłumaczenia EN→DE
-                translator = pipeline("translation", model="Helsinki-NLP/opus-mt-en-de")
-                translation = translator(text)
+                from transformers import MarianMTModel, MarianTokenizer
+
+                model_name = "Helsinki-NLP/opus-mt-en-de"
+                tokenizer = MarianTokenizer.from_pretrained(model_name)
+                model = MarianMTModel.from_pretrained(model_name)
+
+                # Tłumaczenie
+                translated = model.generate(**tokenizer(text, return_tensors="pt", padding=True))
+                translated_text = tokenizer.decode(translated[0], skip_special_tokens=True)
 
             st.success('✅ Tłumaczenie zakończone!')
 
             # Wyświetlenie tłumaczenia
             st.subheader('📝 Przetłumaczony tekst:')
-            st.write(translation[0]['translation_text'])
+            st.write(translated_text)
 
             # Informacja dodatkowa
             st.info('💡 Tłumaczenie wykonane przy użyciu modelu Helsinki-NLP/opus-mt-en-de')
