@@ -59,6 +59,10 @@ if option == "Wydźwięk emocjonalny tekstu (eng)":
     st.markdown("**Przykładowe teksty do wypróbowania:**")
     col1, col2, col3 = st.columns(3)
 
+    # Inicjalizacja default text
+    if 'sentiment_text' not in st.session_state:
+        st.session_state.sentiment_text = ''
+
     with col1:
         if st.button("😊 Pozytywny", use_container_width=True):
             st.session_state.sentiment_text = "I absolutely love this application! It's amazing and works perfectly."
@@ -69,13 +73,16 @@ if option == "Wydźwięk emocjonalny tekstu (eng)":
         if st.button("😐 Neutralny", use_container_width=True):
             st.session_state.sentiment_text = "The weather is cloudy today."
 
-    # Pole tekstowe z możliwością załadowania przykładu
+    # Pole tekstowe
     text = st.text_area(
         label="Twój tekst (po angielsku):",
         height=150,
-        value=st.session_state.get('sentiment_text', ''),
-        key='sentiment_input'
+        value=st.session_state.sentiment_text
     )
+
+    # Synchronizuj z session_state
+    if text != st.session_state.sentiment_text:
+        st.session_state.sentiment_text = text
 
     # Statystyki tekstu
     if text:
@@ -88,12 +95,14 @@ if option == "Wydźwięk emocjonalny tekstu (eng)":
             st.metric("📏 Liczba zdań", text.count('.') + text.count('!') + text.count('?'))
 
     col_analyze, col_clear = st.columns([3, 1])
+    with col_analyze:
+        analyze_button = st.button("🔍 Analizuj", use_container_width=True, type="primary")
     with col_clear:
         if st.button("🗑️ Wyczyść", use_container_width=True):
             st.session_state.sentiment_text = ""
             st.rerun()
 
-    if text:
+    if text and analyze_button:
         try:
             with st.spinner('🔄 Analizuję tekst...'):
                 classifier = pipeline("sentiment-analysis")
@@ -145,6 +154,10 @@ elif option == "Tłumaczenie angielski → niemiecki":
     st.markdown("**Przykładowe teksty do wypróbowania:**")
     col1, col2, col3 = st.columns(3)
 
+    # Inicjalizacja default text
+    if 'translation_text' not in st.session_state:
+        st.session_state.translation_text = ''
+
     with col1:
         if st.button("👋 Powitanie", use_container_width=True):
             st.session_state.translation_text = "Hello! How are you today? I hope you're doing well."
@@ -159,9 +172,12 @@ elif option == "Tłumaczenie angielski → niemiecki":
     text = st.text_area(
         label="Twój tekst (po angielsku):",
         height=150,
-        value=st.session_state.get('translation_text', ''),
-        key='translation_input'
+        value=st.session_state.translation_text
     )
+
+    # Synchronizuj z session_state
+    if text != st.session_state.translation_text:
+        st.session_state.translation_text = text
 
     # Statystyki tekstu
     if text:
@@ -174,12 +190,14 @@ elif option == "Tłumaczenie angielski → niemiecki":
             st.metric("📏 Liczba zdań", text.count('.') + text.count('!') + text.count('?'))
 
     col_translate, col_clear = st.columns([3, 1])
+    with col_translate:
+        translate_button = st.button("🌐 Tłumacz", use_container_width=True, type="primary")
     with col_clear:
         if st.button("🗑️ Wyczyść ", use_container_width=True):
             st.session_state.translation_text = ""
             st.rerun()
 
-    if text:
+    if text and translate_button:
         try:
             with st.spinner('🔄 Tłumaczę tekst...'):
                 # Używamy modelu Helsinki-NLP dla tłumaczenia EN→DE
