@@ -90,7 +90,7 @@ elif option == "Tłumaczenie angielski → niemiecki":
         try:
             with st.spinner('🔄 Tłumaczę tekst...'):
                 # Używamy modelu Helsinki-NLP dla tłumaczenia EN→DE
-                translator = pipeline("translation_en_to_de", model="Helsinki-NLP/opus-mt-en-de")
+                translator = pipeline("translation", model="Helsinki-NLP/opus-mt-en-de")
                 translation = translator(text)
 
             st.success('✅ Tłumaczenie zakończone!')
