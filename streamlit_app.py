@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import os
-from transformers import pipeline
+from transformers import pipeline, MarianMTModel, MarianTokenizer
 
 # Konfiguracja strony
 st.set_page_config(
@@ -10,6 +10,10 @@ st.set_page_config(
     page_icon="🌐",
     layout="wide"
 )
+
+# Inicjalizacja session state dla historii
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
 # Nagłówek aplikacji
 st.title('🌐 NLP Lab - Aplikacja do przetwarzania języka naturalnego')
@@ -26,7 +30,7 @@ Ta aplikacja oferuje dwie główne funkcjonalności:
 
 **Jak korzystać:**
 - Wybierz opcję z menu rozwijanego
-- Wpisz tekst w pole tekstowe
+- Użyj przykładowych tekstów lub wpisz własny
 - Poczekaj na wynik analizy lub tłumaczenia
 """)
 
@@ -51,7 +55,43 @@ if option == "Wydźwięk emocjonalny tekstu (eng)":
     st.subheader('😊 Analiza wydźwięku emocjonalnego')
     st.write('Wpisz tekst w języku angielskim, aby sprawdzić jego wydźwięk emocjonalny.')
 
-    text = st.text_area(label="Twój tekst (po angielsku):", height=150)
+    # Przykładowe teksty
+    st.markdown("**Przykładowe teksty do wypróbowania:**")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("😊 Pozytywny", use_container_width=True):
+            st.session_state.sentiment_text = "I absolutely love this application! It's amazing and works perfectly."
+    with col2:
+        if st.button("😢 Negatywny", use_container_width=True):
+            st.session_state.sentiment_text = "This is terrible and I'm very disappointed with the results."
+    with col3:
+        if st.button("😐 Neutralny", use_container_width=True):
+            st.session_state.sentiment_text = "The weather is cloudy today."
+
+    # Pole tekstowe z możliwością załadowania przykładu
+    text = st.text_area(
+        label="Twój tekst (po angielsku):",
+        height=150,
+        value=st.session_state.get('sentiment_text', ''),
+        key='sentiment_input'
+    )
+
+    # Statystyki tekstu
+    if text:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📝 Liczba znaków", len(text))
+        with col2:
+            st.metric("🔤 Liczba słów", len(text.split()))
+        with col3:
+            st.metric("📏 Liczba zdań", text.count('.') + text.count('!') + text.count('?'))
+
+    col_analyze, col_clear = st.columns([3, 1])
+    with col_clear:
+        if st.button("🗑️ Wyczyść", use_container_width=True):
+            st.session_state.sentiment_text = ""
+            st.rerun()
 
     if text:
         try:
@@ -66,15 +106,32 @@ if option == "Wydźwięk emocjonalny tekstu (eng)":
             sentiment = result['label']
             confidence = result['score']
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Wydźwięk", sentiment)
-            with col2:
-                st.metric("Pewność", f"{confidence:.2%}")
-
-            # Kolorowe tło w zależności od wyniku
+            # Kolorowe wyświetlenie wyniku
             if sentiment == "POSITIVE":
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            padding: 30px; border-radius: 15px; text-align: center; color: white; margin: 20px 0;">
+                    <h1 style="margin: 0; font-size: 3em;">😊 {sentiment}</h1>
+                    <h2 style="margin: 10px 0 0 0;">Pewność: {confidence:.2%}</h2>
+                </div>
+                """, unsafe_allow_html=True)
                 st.balloons()
+            else:
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                            padding: 30px; border-radius: 15px; text-align: center; color: white; margin: 20px 0;">
+                    <h1 style="margin: 0; font-size: 3em;">😢 {sentiment}</h1>
+                    <h2 style="margin: 10px 0 0 0;">Pewność: {confidence:.2%}</h2>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Dodaj do historii
+            st.session_state.history.append({
+                'type': 'Sentiment Analysis',
+                'input': text[:50] + '...' if len(text) > 50 else text,
+                'output': f"{sentiment} ({confidence:.2%})",
+                'time': time.strftime("%H:%M:%S")
+            })
 
         except Exception as e:
             st.error(f'❌ Wystąpił błąd podczas analizy: {str(e)}')
@@ -84,7 +141,43 @@ elif option == "Tłumaczenie angielski → niemiecki":
     st.subheader('🇬🇧 → 🇩🇪 Tłumaczenie tekstu')
     st.write('Wpisz tekst w języku angielskim, a zostanie przetłumaczony na niemiecki.')
 
-    text = st.text_area(label="Twój tekst (po angielsku):", height=150)
+    # Przykładowe teksty
+    st.markdown("**Przykładowe teksty do wypróbowania:**")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("👋 Powitanie", use_container_width=True):
+            st.session_state.translation_text = "Hello! How are you today? I hope you're doing well."
+    with col2:
+        if st.button("🍕 Restauracja", use_container_width=True):
+            st.session_state.translation_text = "I would like to order a pizza with extra cheese, please."
+    with col3:
+        if st.button("🌍 Podróż", use_container_width=True):
+            st.session_state.translation_text = "Where is the nearest train station? I need to buy a ticket."
+
+    # Pole tekstowe
+    text = st.text_area(
+        label="Twój tekst (po angielsku):",
+        height=150,
+        value=st.session_state.get('translation_text', ''),
+        key='translation_input'
+    )
+
+    # Statystyki tekstu
+    if text:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📝 Liczba znaków", len(text))
+        with col2:
+            st.metric("🔤 Liczba słów", len(text.split()))
+        with col3:
+            st.metric("📏 Liczba zdań", text.count('.') + text.count('!') + text.count('?'))
+
+    col_translate, col_clear = st.columns([3, 1])
+    with col_clear:
+        if st.button("🗑️ Wyczyść ", use_container_width=True):
+            st.session_state.translation_text = ""
+            st.rerun()
 
     if text:
         try:
@@ -102,16 +195,48 @@ elif option == "Tłumaczenie angielski → niemiecki":
 
             st.success('✅ Tłumaczenie zakończone!')
 
-            # Wyświetlenie tłumaczenia
-            st.subheader('📝 Przetłumaczony tekst:')
-            st.write(translated_text)
+            # Wyświetlenie tłumaczenia w ładnym boxie
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                        padding: 30px; border-radius: 15px; margin: 20px 0;">
+                <h3 style="color: white; margin: 0 0 15px 0;">📝 Przetłumaczony tekst:</h3>
+                <p style="font-size: 1.3em; color: white; margin: 0; line-height: 1.6;">{translated_text}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
             # Informacja dodatkowa
             st.info('💡 Tłumaczenie wykonane przy użyciu modelu Helsinki-NLP/opus-mt-en-de')
 
+            # Dodaj do historii
+            st.session_state.history.append({
+                'type': 'Translation EN→DE',
+                'input': text[:50] + '...' if len(text) > 50 else text,
+                'output': translated_text[:50] + '...' if len(translated_text) > 50 else translated_text,
+                'time': time.strftime("%H:%M:%S")
+            })
+
         except Exception as e:
             st.error(f'❌ Wystąpił błąd podczas tłumaczenia: {str(e)}')
             st.warning('⚠️ Upewnij się, że masz zainstalowane wszystkie wymagane biblioteki.')
+
+st.markdown('---')
+
+# Historia
+if len(st.session_state.history) > 0:
+    with st.expander("📜 Historia operacji", expanded=False):
+        st.write(f"**Wykonano operacji: {len(st.session_state.history)}**")
+
+        # Wyświetl ostatnie 5 operacji
+        for i, item in enumerate(reversed(st.session_state.history[-5:])):
+            st.markdown(f"""
+            **{len(st.session_state.history) - i}.** `{item['time']}` - **{item['type']}**
+            - Input: _{item['input']}_
+            - Output: _{item['output']}_
+            """)
+
+        if st.button("🗑️ Wyczyść historię"):
+            st.session_state.history = []
+            st.rerun()
 
 st.markdown('---')
 
@@ -121,7 +246,7 @@ st.write('Poniżej prezentujemy przykładowy zbiór danych:')
 
 try:
     df = pd.read_csv("DSP_4.csv", sep=';')
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 except FileNotFoundError:
     st.warning('⚠️ Plik DSP_4.csv nie został znaleziony.')
 except Exception as e:
@@ -129,8 +254,25 @@ except Exception as e:
 
 st.markdown('---')
 
-# Numer indeksu
-st.header('👨‍🎓 Informacje o autorze')
-st.write('**Numer indeksu:** s27600')
-st.write('**Projekt:** Lab05 - Streamlit + Hugging Face Transformers')
-st.write('**Data:** 2026-05-15')
+# Numer indeksu i informacje
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("""
+    ### 👨‍🎓 Informacje o autorze
+    - **Numer indeksu:** s27600
+    - **Uczelnia:** PJWSTK
+    - **Projekt:** Lab05 - Streamlit + Hugging Face
+    """)
+
+with col2:
+    st.markdown("""
+    ### 🔧 Wykorzystane technologie
+    - **Streamlit** - framework do tworzenia aplikacji
+    - **Hugging Face Transformers** - modele NLP
+    - **DistilBERT** - analiza sentymentu
+    - **MarianMT** - tłumaczenie maszynowe
+    """)
+
+st.markdown('---')
+st.caption('Aplikacja NLP - Projekt Lab05 | 2026-05-15')
